@@ -305,8 +305,16 @@ async def get_sensor_history(
     if user is None:
         raise HTTPException(status_code=401,detail='Authentication Failed.')
 
-    vn_now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=7)
+# 1. Lấy giờ VN hiện tại, xóa múi giờ để so khớp với DB
+    vn_now = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=7)).replace(tzinfo=None)
+    
+    # 2. Tính mốc thời gian bắt đầu lấy dữ liệu
     cutoff_time = vn_now - datetime.timedelta(hours=hours)
+
+    # 3. Truy vấn (DB sẽ so sánh timestamp naive với cutoff_time naive)
+    total_count = db.query(SensorLogs).filter(SensorLogs.timestamp >= cutoff_time).count()
+    
+    # ... (giữ nguyên đoạn logic lấy mẫu offset) ...
 
     # Đếm tổng số bản ghi trong khoảng thời gian
     total_count = db.query(SensorLogs).filter(
@@ -343,7 +351,8 @@ async def get_sensor_history(
 def format_logs(logs):
     return [
         {
-            "timestamp": log.timestamp.strftime("%H:%M %d/%m"),
+            # Cộng thêm 7 tiếng vào timestamp trước khi format thành chuỗi
+            "timestamp": (log.timestamp + datetime.timedelta(hours=7)).strftime("%H:%M %d/%m"),
             "temp": log.temp,
             "humi": log.humi,
             "light": log.light,
