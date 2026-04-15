@@ -78,7 +78,7 @@ def calculate_device_pwm(device: Device, latest_sensor: SensorLogs, db: db_depen
             should_run = True
         elif s_type == 'soil' and latest_sensor.soil < target_th.min_value:
             should_run = True
-
+        print(f"DEBUG: Thiet bi {device.device_index} | s_type: {s_type} | Nhiet do hien tai: {latest_sensor.temp} | Nguong Max: {target_th.max_value} | Should_run: {should_run} | PWM tra ve: {device.manual_pwm}")
         return device.manual_pwm if should_run else 0
 
     return 0
