@@ -21,7 +21,11 @@ router = APIRouter(
 
 
 def calculate_device_pwm(device: Device, latest_sensor: SensorLogs, db: db_dependency) -> int:
-    current_hour = datetime.datetime.now().hour
+    # Lấy thời điểm hiện tại theo giờ VN
+    vn_now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=7)
+    
+    # Trích xuất riêng con số giờ để chạy thuật toán Auto
+    current_hour = vn_now.hour
 
     # MODE 0: OFF
     if device.mode == 0:
@@ -89,7 +93,10 @@ DELTA = {
 @router.post("/update-sensor")
 @limiter.limit("240/minute")
 async def receive_sensor_data(req: SensorLogCreate, db: db_dependency,request: Request):
-    current_time = datetime.datetime.now()
+    current_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=7)
+    
+    # Xóa thông tin timezone để có thể trừ với dữ liệu lấy từ DB (vì DB thường lưu naive datetime)
+    current_time = current_time.replace(tzinfo=None)
     # 1. Lấy bản ghi SensorLog mới nhất từ DB để so sánh
     last_log = db.query(SensorLogs).order_by(SensorLogs.timestamp.desc()).first()
     should_save_log = False
@@ -298,7 +305,8 @@ async def get_sensor_history(
     if user is None:
         raise HTTPException(status_code=401,detail='Authentication Failed.')
 
-    cutoff_time = datetime.datetime.now() - datetime.timedelta(hours=hours)
+    vn_now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=7)
+    cutoff_time = vn_now - datetime.timedelta(hours=hours)
 
     # Đếm tổng số bản ghi trong khoảng thời gian
     total_count = db.query(SensorLogs).filter(
